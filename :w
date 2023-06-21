@@ -1,0 +1,152 @@
+import { useState, useEffect } from "react";
+import reactLogo from "./assets/react.svg";
+import viteLogo from "/vite.svg";
+import "./App.css";
+
+import Cookies from "js-cookie";
+import axios from "axios";
+
+function App() {
+	//AUTH
+	const [password, setPassword] = useState("");
+	const [isLoggedIn, setIsLoggedIn] = useState(false);
+	const [user, setUser] = useState("");
+
+	const generalPassword = "sync1234";
+	const cookieName = "isLoggedInCookie";
+
+	//TIMER
+	const [isPressing, setIsPressing] = useState(false);
+	const [timer, setTimer] = useState(0);
+	let timerId;
+
+	useEffect(() => {
+		const isUserLoggedIn = Cookies.get(cookieName);
+		const isUsername = Cookies.get("username");
+		if (isUserLoggedIn) {
+			setIsLoggedIn(true);
+		}
+
+		if (isUsername) {
+			setUser(isUsername);
+		}
+
+		if (isPressing) {
+			timerId = setTimeout(() => {
+				setTimer(timer + 1);
+			}, 1000);
+		} else {
+			clearTimeout(timerId);
+		}
+
+		if (timer === 10) {
+			saveTimeToNotion(timer);
+		}
+
+		return () => {
+			clearTimeout(timerId);
+		};
+	}, [isPressing, timer]);
+
+	const getCurrentTime = () => {
+		const currentTime = new Date();
+		const formattedTime = currentTime.toISOString();
+		return formattedTime;
+	};
+
+	const handlePasswordChange = (e) => {
+		setPassword(e.target.value);
+	};
+
+	const handleUserChange = (e) => {
+		setUser(e.target.value);
+	};
+
+	const handleLogin = () => {
+		if (password === generalPassword) {
+			setIsLoggedIn(true);
+			Cookies.set(cookieName, true); // Set cookie to expire in 7 days
+			Cookies.set("username", user); // Set cookie to expire in 7 days
+		} else {
+			alert("Incorrect password. Please try again.");
+		}
+	};
+
+	const handleButtonPress = () => {
+		setIsPressing(true);
+	};
+
+	const handleButtonRelease = () => {
+		setIsPressing(false);
+		setTimer(0);
+	};
+
+	const saveTimeToNotion = async (time) => {
+		const currentTime = getCurrentTime();
+		console.log(currentTime);
+		try {
+			// Make a request to your backend API to save the time to Notion
+			axios
+				.post("https://bookclub-api-c934.onrender.com/addsync", {
+					user: user,
+					date: currentTime,
+				})
+				.then((res) => console.log(res))
+				.catch((err) => console.log(err));
+			console.log("Time saved to Notion successfully.");
+		} catch (error) {
+			console.error("Error saving time to Notion:", error);
+		}
+	};
+
+	return (
+		<div>
+			{!isLoggedIn ? (
+				<div>
+					<h2>Login</h2>
+					<input
+						type="user"
+						value={user}
+						onChange={handleUserChange}
+					/>
+					<input
+						type="password"
+						value={password}
+						onChange={handlePasswordChange}
+					/>
+					<button onClick={handleLogin}>Log In</button>
+				</div>
+			) : (
+				<div>
+					<button className="user">
+						<span>⬤</span> {user}
+					</button>
+					<button
+						className={`round-button ${
+							isPressing ? "pressed" : ""
+						}`}
+						onMouseDown={handleButtonPress}
+						onMouseUp={handleButtonRelease}
+						onMouseLeave={handleButtonRelease}
+						onTouchStart={handleButtonPress}
+						onTouchEnd={handleButtonRelease}
+						onTouchCancel={handleButtonRelease}
+					>
+						{isPressing ? `${timer}s` : "Press and hold"}
+					</button>
+					<div className="bg">
+						{isPressing ? (
+							<div className="bg-sec">
+								<p>{10 - timer}</p>
+							</div>
+						) : (
+							""
+						)}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+
+export default App;
